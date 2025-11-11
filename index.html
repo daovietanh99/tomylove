@@ -1,0 +1,341 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Big Audio Reactive Heart</title>
+    <!-- Load Tailwind CSS for utility styling -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Load Tone.js for audio processing -->
+    <script src="https://unpkg.com/tone@14.7.58/build/Tone.js"></script>
+    <style>
+        /* Custom CSS for the Heart Shape (Increased Size for "Big") */
+        .heart {
+            position: relative;
+            width: 250px; /* Bigger heart */
+            height: 250px; /* Bigger heart */
+            background-color: #ff007f; /* Neon Pink/Magenta */
+            transform: rotate(-45deg);
+            box-shadow: 0 0 60px rgba(255, 0, 127, 0.9),
+                        0 0 150px rgba(255, 0, 127, 0.7);
+            transition: transform 0.05s ease-out; /* Smoothing the scale/vibration */
+            will-change: transform; /* Performance optimization */
+        }
+
+        .heart::before,
+        .heart::after {
+            content: "";
+            position: absolute;
+            width: 250px; /* Match heart size */
+            height: 250px; /* Match heart size */
+            background-color: #ff007f;
+            border-radius: 50%;
+        }
+
+        .heart::before {
+            top: -125px; /* Half of the width */
+            left: 0;
+        }
+
+        .heart::after {
+            top: 0;
+            left: 125px; /* Half of the width */
+        }
+
+        /* Container for centering and aesthetic */
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #1a1a2e; /* Deep dark blue background for EDM vibe */
+            overflow: hidden; /* Prevent scrolling */
+        }
+
+        #visualizer-container {
+            min-height: 100vh;
+        }
+
+        #info-text {
+            color: #b3a4f7;
+            text-shadow: 0 0 10px rgba(179, 164, 247, 0.5);
+        }
+        
+        #typing-overlay {
+            /* Position the text container relative to the heart's non-rotated center */
+            /* We compensate for the heart's rotation so text stays upright */
+            /* transform: rotate(45deg);  */
+            top: 0; left: 0; right: 0; bottom: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+    </style>
+</head>
+<body>
+
+    <div id="visualizer-container" class="flex flex-col items-center justify-center p-6">
+
+        <!-- The Heart Element and Typing Overlay -->
+        <div id="heart-wrapper" class="p-10 relative">
+            <div id="heart" class="heart"></div>
+
+            <!-- Typing Overlay: Absolute position to center text over the heart -->
+            <div id="typing-overlay" class="absolute inset-0 flex items-center justify-center pointer-events-none">
+                <!-- Using <pre> tag to preserve exact formatting and line breaks from the JS string -->
+                <pre id="message-text" class="text-center text-xl font-mono text-white tracking-widest leading-relaxed opacity-0 transition-opacity duration-300" style="text-shadow: 0 0 10px #b3a4f7;"></pre>
+            </div>
+        </div>
+
+        <!-- Single Start Button (Updated text) -->
+        <button id="start-button"
+            class="bg-purple-600 hover:bg-purple-500 text-white font-bold py-3 px-8 rounded-full shadow-lg transition duration-200 transform hover:scale-105 mb-4">
+            Click to Continue
+        </button>
+
+        <!-- Information Text -->
+        <p id="info-text" class="text-sm italic text-center max-w-sm">
+            Press the button to load the audio and start the message.
+        </p>
+
+    </div>
+
+    <script>
+        // --- CONFIGURATION: REPLACE THIS URL WITH YOUR MP3/Audio FILE LINK ---
+        const AUDIO_URL = 'https://daovietanh99.github.io/tomylove/love-paradise.mp3'; // Placeholder
+        // --------------------------------------------------------------------
+
+        // --- CONFIGURATION: CUSTOM MESSAGE (Use \n for line breaks if needed) ---
+        // The text will scroll, showing a maximum of 5 visible lines.
+        const HEART_MESSAGE = `
+Bé iu bảo anh hãy làm một bài văn đầy nội lực lần nữa ạ! 
+Tình yêu chúng ta đã là bài văn hay nhất rồi ^^
+Nhưng cũng có thể nói đây sẽ là một bài văn không những đầy nội lực 
+mà còn là một bài văn tuyệt vời minh chứng cho tình yêu chúng ta.
+Trong lúc anh viết những lời này, anh đang nghe bài Love Pradise nhen, 
+nhẹ nhàng nhưng cũng có mạnh mẽ và đầy nhiệt huyết, 
+nếu bé có đọc những dòng này thì hãy mở bài này lên nghe nhen 
+Bé iu là tình yêu là thanh xuân của anh. 
+Chúng ta đã trải qua những năm tháng tuyệt vời nhất trong đời, 
+có những lúc vui, lúc buồn, lúc tức giận nhưng trên hết
+chúng ta vẫn ở bên cạnh nhau chia sẻ, cảm thông, cùng nhau phát triển. 
+Và bây giờ cho đến sau này, bé iu và anh sẽ không bao giờ rời xa nhau, 
+chúng ta đã phát triển tình yêu lên mức độ cao hơn, trách nhiệm hơn. 
+Anh đã mong mỏi điều này từ lâu, và đây là lời cầu hôn của anh húi cho bé iu!!!
+Anh mong rằng chúng ta sẽ mãi yêu thương nhau, bên cạnh nhau 
+và cùng nhau tiến lên chắp cánh cho một tương lai tươi sáng (anh chắc chắn). 
+Cuối cùng, lời chúc cho tình yêu của chúng ta :D cũng như Love Paradise vậy! 
+Hãy để nó là PRADISE của chúng ta: 
+You're always on my mind
+All days, just all the time
+You're everything to me
+Brightest star to let me see
+You touch me in my dreams
+We kiss in every scene
+I pray to be with you
+Through rain and shiny days
+.
+.
+.
+I LOVE YOU
+`;
+        // -------------------------------------------------------------------------
+
+        // Global Variables
+        let isStarted = false;
+        let isAudioLoaded = false;
+        let meter;
+        let player = null;
+        let heartElement;
+
+        const MIN_SCALE = 1.0;
+        const MAX_SCALE = 1.5; // Controls maximum vibration size
+        const AMPLITUDE_RANGE_DB = 50; // Controls sensitivity (lower = more sensitive)
+        const MAX_VISIBLE_LINES = 5;
+
+        // DOM elements
+        const startButton = document.getElementById('start-button');
+        const infoText = document.getElementById('info-text');
+        const MESSAGE_TEXT_ELEMENT = document.getElementById('message-text');
+
+        // Function to clamp a value between a min and max
+        const clamp = (num, min, max) => Math.min(Math.max(num, min), max);
+
+        // --- Firebase/Auth Setup Placeholder (Required for Canvas Environment) ---
+        // These global variables are required but not used for this simple visualization
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {};
+        const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
+        // ------------------------------------------------------------------------
+
+        /**
+         * Starts the music playback once audio is loaded AND the first character appears.
+         */
+        function startPlaybackIfReady() {
+            if (isAudioLoaded && !isStarted) {
+                // Ensure the player is positioned at the start
+                player.start(Tone.now()); 
+                isStarted = true;
+                infoText.textContent = 'Music playing. The heart is vibrating!';
+            }
+        }
+
+        /**
+         * Handles typing the message line by line with the scrolling buffer.
+         */
+        function startTyping(allLines) {
+            const MESSAGE_SPEED = 40; // Typing speed per character (ms)
+            const LINE_PAUSE_MULTIPLIER = 10; // Pause after line complete (10 * 40ms = 400ms)
+            let lineIndex = 0;
+            let charIndex = 0;
+
+            // Buffer holds the lines currently being typed or completed (up to MAX_VISIBLE_LINES + 1)
+            let typedLinesBuffer = [""]; 
+            MESSAGE_TEXT_ELEMENT.style.opacity = 1; // Make text visible
+
+            // Helper function to update the display text from the buffer
+            const updateDisplay = () => {
+                // Show only the last MAX_VISIBLE_LINES from the buffer
+                const linesToShow = typedLinesBuffer.slice(-MAX_VISIBLE_LINES);
+                MESSAGE_TEXT_ELEMENT.textContent = linesToShow.join('\n');
+            };
+
+            const typeNext = () => {
+                // Check if all lines are done
+                if (lineIndex >= allLines.length) {
+                    infoText.textContent = 'Typing complete. Music is playing.';
+                    return;
+                }
+
+                const currentLineText = allLines[lineIndex];
+
+                if (lineIndex === 0 && charIndex === 0) {
+                    // Start music the instant the very first character appears
+                    startPlaybackIfReady();
+                }
+
+                if (charIndex < currentLineText.length) {
+                    // --- Typing Character ---
+                    // Append character to the currently active line (last element in buffer)
+                    typedLinesBuffer[typedLinesBuffer.length - 1] += currentLineText.charAt(charIndex);
+                    charIndex++;
+                    
+                    updateDisplay();
+
+                    // Schedule the next character
+                    setTimeout(typeNext, MESSAGE_SPEED);
+                } else {
+                    // --- Line Complete ---
+                    lineIndex++;
+                    charIndex = 0;
+
+                    if (lineIndex < allLines.length) {
+                        // If we are starting line #6, the buffer will have 6 lines.
+                        // When we add the 7th line, the 1st line will be sliced off by updateDisplay.
+                        typedLinesBuffer.push(""); 
+                    }
+
+                    // Schedule the start of the next line (with a short pause)
+                    setTimeout(typeNext, MESSAGE_SPEED * LINE_PAUSE_MULTIPLIER);
+                }
+            };
+
+            typeNext();
+        }
+
+        /**
+         * Initializes the Tone.js Player and Meter.
+         */
+        function initializeAudio() {
+            if (!meter) { meter = new Tone.Meter(); }
+
+            player = new Tone.Player({
+                url: AUDIO_URL,
+                loop: true,
+                volume: -6, // Adjusted volume for better meter reading
+                onload: () => {
+                    player.connect(meter).toDestination();
+                    isAudioLoaded = true;
+                    // If typing already started, this triggers playback immediately
+                    startPlaybackIfReady(); 
+                    infoText.textContent = 'Audio loaded. Starting typing...';
+                },
+                onerror: (e) => {
+                    console.error("Audio Load Error:", e);
+                    infoText.textContent = `Error loading audio. Check the URL is direct and valid.`;
+                    startButton.style.display = 'block';
+                    startButton.textContent = 'Retry Click to Continue';
+                    startButton.disabled = false;
+                }
+            }).toDestination();
+        }
+
+        // The core visualization loop (runs continuously)
+        function animate() {
+            requestAnimationFrame(animate);
+
+            if (!isStarted || !meter || !heartElement) return;
+
+            // Get the current volume reading from the meter (in dB)
+            const volumeDb = meter.getValue();
+
+            // Convert the dB value into a linear scale factor (0 to 1)
+            // Example: Clamps -50dB to 0dB. -50 maps to 0, 0 maps to 1.
+            const clampedDb = clamp(volumeDb, -AMPLITUDE_RANGE_DB, 0);
+            const linearAmplitude = (clampedDb + AMPLITUDE_RANGE_DB) / AMPLITUDE_RANGE_DB;
+
+            // Map linear amplitude [0, 1] to the desired scale range [MIN_SCALE, MAX_SCALE]
+            const scale = MIN_SCALE + (linearAmplitude * (MAX_SCALE - MIN_SCALE));
+
+            // Apply the new scale transformation to the heart
+            // Note: The heart is rotated -45deg, so we keep that and add the scale
+            heartElement.style.transform = `rotate(-45deg) scale(${scale})`;
+            
+            // Optional: Make the shadow/opacity pulse slightly with the volume
+            heartElement.style.opacity = linearAmplitude * 0.4 + 0.6;
+        }
+
+        // Initial setup on window load
+        window.onload = function() {
+            heartElement = document.getElementById('heart');
+            animate(); // Start the animation loop (it waits for isStarted = true)
+
+            // Playback Button Listener
+            startButton.addEventListener('click', async () => {
+                if (isStarted) return;
+
+                // 1. Prepare UI
+                startButton.style.display = 'none';
+                infoText.textContent = 'Starting audio context...';
+
+                // 2. Start Audio Context
+                if (Tone.context.state !== 'running') {
+                    try {
+                        await Tone.start();
+                    } catch (error) {
+                        console.error("Failed to start audio context:", error);
+                        infoText.textContent = 'Failed to start audio. Try reloading.';
+                        startButton.style.display = 'block';
+                        startButton.textContent = 'Click to Continue';
+                        return;
+                    }
+                }
+                
+                // 3. Start Audio Loading
+                initializeAudio(); 
+
+                // 4. Prepare and Start Typing Animation
+                const rawLines = HEART_MESSAGE.split('\n');
+                // Filter out lines that are purely empty or just whitespace
+                const linesToType = rawLines.filter(line => line.length > 0 && line.trim() !== '');
+
+                if (linesToType.length === 0) {
+                    infoText.textContent = 'Error: The configured message contains no text.';
+                    startButton.style.display = 'block';
+                    startButton.textContent = 'Click to Continue';
+                    return;
+                }
+
+                startTyping(linesToType); // Starts typing and checks for playback synchronization
+            });
+        };
+    </script>
+</body>
+</html>
