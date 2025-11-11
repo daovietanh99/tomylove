@@ -91,9 +91,9 @@
         </button>
 
         <!-- Information Text -->
-        <p id="info-text" class="text-sm italic text-center max-w-sm">
+        <!-- <p id="info-text" class="text-sm italic text-center max-w-sm">
             Press the button to load the audio and start the message.
-        </p>
+        </p> -->
 
     </div>
 
@@ -152,7 +152,7 @@ I LOVE YOU
 
         // DOM elements
         const startButton = document.getElementById('start-button');
-        const infoText = document.getElementById('info-text');
+        // const infoText = document.getElementById('info-text');
         const MESSAGE_TEXT_ELEMENT = document.getElementById('message-text');
 
         // Function to clamp a value between a min and max
@@ -173,7 +173,7 @@ I LOVE YOU
                 // Ensure the player is positioned at the start
                 player.start(Tone.now()); 
                 isStarted = true;
-                infoText.textContent = 'Music playing. The heart is vibrating!';
+                // infoText.textContent = 'Music playing. The heart is vibrating!';
             }
         }
 
@@ -200,7 +200,7 @@ I LOVE YOU
             const typeNext = () => {
                 // Check if all lines are done
                 if (lineIndex >= allLines.length) {
-                    infoText.textContent = 'Typing complete. Music is playing.';
+                    // infoText.textContent = 'Typing complete. Music is playing.';
                     return;
                 }
 
@@ -255,11 +255,11 @@ I LOVE YOU
                     isAudioLoaded = true;
                     // If typing already started, this triggers playback immediately
                     startPlaybackIfReady(); 
-                    infoText.textContent = 'Audio loaded. Starting typing...';
+                    // infoText.textContent = 'Audio loaded. Starting typing...';
                 },
                 onerror: (e) => {
                     console.error("Audio Load Error:", e);
-                    infoText.textContent = `Error loading audio. Check the URL is direct and valid.`;
+                    // infoText.textContent = `Error loading audio. Check the URL is direct and valid.`;
                     startButton.style.display = 'block';
                     startButton.textContent = 'Retry Click to Continue';
                     startButton.disabled = false;
@@ -303,7 +303,7 @@ I LOVE YOU
 
                 // 1. Prepare UI
                 startButton.style.display = 'none';
-                infoText.textContent = 'Starting audio context...';
+                // infoText.textContent = 'Starting audio context...';
 
                 // 2. Start Audio Context
                 if (Tone.context.state !== 'running') {
@@ -311,7 +311,7 @@ I LOVE YOU
                         await Tone.start();
                     } catch (error) {
                         console.error("Failed to start audio context:", error);
-                        infoText.textContent = 'Failed to start audio. Try reloading.';
+                        // infoText.textContent = 'Failed to start audio. Try reloading.';
                         startButton.style.display = 'block';
                         startButton.textContent = 'Click to Continue';
                         return;
@@ -327,7 +327,7 @@ I LOVE YOU
                 const linesToType = rawLines.filter(line => line.length > 0 && line.trim() !== '');
 
                 if (linesToType.length === 0) {
-                    infoText.textContent = 'Error: The configured message contains no text.';
+                    // infoText.textContent = 'Error: The configured message contains no text.';
                     startButton.style.display = 'block';
                     startButton.textContent = 'Click to Continue';
                     return;
